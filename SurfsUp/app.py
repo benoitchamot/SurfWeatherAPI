@@ -101,8 +101,20 @@ def home():
 		f"	<li>Each row includes: datetime, temperature in degC</li>"
 		f"</ul>"
 		f"<h2>Dynamic routes</h2>"
-		f"/api/v1.0/START<br/>"
-		f"/api/v1.0/START/END<br/>"
+		f"/api/v1.0/&#x003C;start_date&#x003E;<br/>"
+		f"<ul>"
+		f"	<li>Returns min, max and average temperature for each date</li>"
+		f"	<li>Returns value from &#x003C;start_date&#x003E to end of table</li>"
+		f"	<li>Date format must be: YYYY-MM-DD</li>"
+		f"</ul>"
+		f"/api/v1.0/&#x003C;start_date&#x003E/&#x003C;end_date&#x003E;<br/>"
+		f"<ul>"
+		f"	<li>Returns min, max and average temperature for each date</li>"
+		f"	<li>Returns value from &#x003C;start_date&#x003E to &#x003C;end_date&#x003E</li>"
+		f"	<li>Date format must be: YYYY-MM-DD</li>"
+		f"	<li>&#x003C;end_date&#x003E must be greater or equal to &#x003C;start_date&#x003E</li>"
+		f"	<li>All temperatures are in degC</li>"
+		f"</ul>"
 	)
 
 # Static precipitation route
@@ -211,6 +223,102 @@ def api_tobs():
 
 	# Return jsonified dictionary
 	return jsonify(tobs_dicts)
+
+# Dynamic route (with start date)
+@app.route("/api/v1.0/<start_date>")
+def api_startdate(start_date):
+	
+	# Convert date to datetime
+	try:
+		start_date_dt = str_to_date(start_date)
+	except:
+		error_message = {'Error': 'Date format not accepted. Make sure date is formatted as YYYY-MM-DD'}
+		return jsonify(error_message)
+
+	# Open session to the database
+	session = Session(bind=engine)
+
+	# Select columns and perform calculation
+	sel = [measurement.date,
+    	func.min(measurement.tobs),
+    	func.max(measurement.tobs),
+    	func.avg(measurement.tobs)]
+
+	# Get the date, and temperature min, max and average, group by date
+	temperature_data = session.query(*sel).group_by(measurement.date)
+
+	# Creat an empty list
+	temp_data_dicts = []
+
+	# Loop through the data
+	for row in temperature_data:
+		# Convert date to datetime
+		row_date = str_to_date(row.date)
+		# Compare the date to the start date
+		if (row_date >= start_date_dt):
+			# Add data to dictionary
+			data_dict = {'Date': row_date, 'TMIN': row[1], 'TMAX': row[2], 'TAVG': row[3]}
+			temp_data_dicts.append(data_dict)
+
+	# Close session
+	session.close()
+
+	# Return jsonified dictionary
+	return jsonify(temp_data_dicts)
+
+# Dynamic route (with start date and end date)
+@app.route("/api/v1.0/<start_date>/<end_date>")
+def api_startenddates(start_date, end_date):
+	
+	# Convert start date to datetime
+	try:
+		start_date_dt = str_to_date(start_date)
+	except:
+		error_message = {'Error': 'Sart date format not accepted. Make sure date is formatted as YYYY-MM-DD'}
+		return jsonify(error_message)
+	
+	# Convert end date to datetime
+	try:
+		end_date_dt = str_to_date(end_date)
+	except:
+		error_message = {'Error': 'End date format not accepted. Make sure date is formatted as YYYY-MM-DD'}
+		return jsonify(error_message)
+	
+	# Check that the start and end date are compatible
+	if end_date_dt < start_date_dt:
+		error_message = {'Error': 'End date must be greater or equal to start date.'}
+		return jsonify(error_message)
+	
+	# Open session to the database
+	session = Session(bind=engine)
+
+	# Select columns and perform calculation
+	sel = [measurement.date,
+    	func.min(measurement.tobs),
+    	func.max(measurement.tobs),
+    	func.avg(measurement.tobs)]
+
+	# Get the date, and temperature min, max and average, group by date
+	temperature_data = session.query(*sel).group_by(measurement.date)
+
+	# Creat an empty list
+	temp_data_dicts = []
+
+	# Loop through the data
+	for row in temperature_data:
+		# Convert date to datetime
+		row_date = str_to_date(row.date)
+		# Compare the date to the start and end date
+		if (row_date >= start_date_dt) & (row_date <= end_date_dt):
+			# Add data to dictionary
+			data_dict = {'Date': row_date, 'TMIN': row[1], 'TMAX': row[2], 'TAVG': row[3]}
+			temp_data_dicts.append(data_dict)
+
+	# Close session
+	session.close()
+
+	# Return jsonified dictionary
+	return jsonify(temp_data_dicts)
 
 #########################################################
 # Run App
