@@ -95,6 +95,11 @@ def home():
 		f"	<li>Each station includes: id, name, latitude, longitude and elevation</li>"
 		f"</ul>"
 		f"/api/v1.0/tobs"
+		f"<ul>"
+		f"	<li>Returns temperatures for station USC00519281</li>"
+		f"	<li>Data are for the last 12 months</li>"
+		f"	<li>Each row includes: datetime, temperature in degC</li>"
+		f"</ul>"
 		f"<h2>Dynamic routes</h2>"
 		f"/api/v1.0/START<br/>"
 		f"/api/v1.0/START/END<br/>"
@@ -166,6 +171,46 @@ def api_stations():
 
 	# Return jsonified dictionary
 	return jsonify(station_dicts)
+
+# Static tobs route (for station USC00519281)
+@app.route("/api/v1.0/tobs")
+def api_tobs():
+
+	# Use most active station:
+	most_active_station = 'USC00519281'
+	
+	# Open session to the database
+	session = Session(bind=engine)
+
+	# Using the most active station id
+	most_active_station_query = session.query(measurement).filter(measurement.station == most_active_station).order_by(desc(measurement.date))
+
+	# Query the last 12 months of temperature observation data for this station
+	station_most_recent_date_string = most_active_station_query.first().date
+	station_most_recent_date, station_most_recent_date_plus_1y = last_12_months(station_most_recent_date_string)
+
+	# Create empty lists
+	tobs_dicts = []
+
+	# Loop through the measurements
+	for row in most_active_station_query:
+    	# Convert date to datetime
+		row_date = str_to_date(row.date)
+    
+    	# If the date is more recent than the limit date (1 year from most recent date)
+    	# and the precipitations values are not null...
+		if (row_date >= station_most_recent_date_plus_1y) & (type(row.tobs) == float):
+        	# ... then append the data to a dictionary
+			tobs = {'Date': row_date, 'Temperature': row.tobs}
+			
+			# Add dictionary to list
+			tobs_dicts.append(tobs)
+
+	# Close session
+	session.close()
+
+	# Return jsonified dictionary
+	return jsonify(tobs_dicts)
 
 #########################################################
 # Run App
