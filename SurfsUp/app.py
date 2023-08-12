@@ -90,12 +90,17 @@ def home():
 		f"	<li>Value: Precipitation (in mm)</li>"
 		f"</ul>"
 		f"/api/v1.0/stations<br/>"
+		f"<ul>"
+		f"	<li>Returns information for all stations in the database</li>"
+		f"	<li>Each station includes: id, name, latitude, longitude and elevation</li>"
+		f"</ul>"
 		f"/api/v1.0/tobs"
 		f"<h2>Dynamic routes</h2>"
 		f"/api/v1.0/START<br/>"
 		f"/api/v1.0/START/END<br/>"
 	)
 
+# Static precipitation route
 @app.route("/api/v1.0/precipitation")
 def api_precipitation():
 	# Open session to the database
@@ -130,6 +135,37 @@ def api_precipitation():
 
 	# Return jsonified dictionary
 	return jsonify(precipitation_dicts)
+
+# Static station route
+@app.route("/api/v1.0/stations")
+def api_stations():
+	# Open session to the database
+	session = Session(bind=engine)
+
+	# Query the data from the station table
+	stations = session.query(station)
+
+	# Create an empty list
+	station_dicts = []
+
+	# Loop through the table rows
+	for row in stations:
+		# Add data to a dictionary
+		station_row = {'id': row.id, 
+		 			'station': row.station,
+					'name': row.name,
+					'latitude': row.latitude,
+					'longitude': row.longitude,
+					'elevation': row.elevation}
+		
+		# Add dictionary to list
+		station_dicts.append(station_row)
+
+	# Close session
+	session.close()
+
+	# Return jsonified dictionary
+	return jsonify(station_dicts)
 
 #########################################################
 # Run App
