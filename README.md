@@ -1,5 +1,5 @@
-# sqlalchemy-challenge
-Repository for Monash University Bootcamp Module 10
+# Weather API
+API providing weather information for a surfing holiday in Hawaii
 
 ## File structure
 - Resources dictionary includes all the data (CSV files with raw data and sqlite database)
